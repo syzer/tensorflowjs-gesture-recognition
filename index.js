@@ -8,6 +8,7 @@ let audioContext, analyser, microphone;
 let noiseLevel = 0;
 window.currentNoiseLevel = 0; // Expose globally for timeline
 window.currentNoisePeak = 0; // Expose peak for clapping detection
+let thresholdCrossed = false; // Track if we've already logged crossing the threshold
 
 const CLAP_THRESHOLD = 80; // Peak noise level to trigger clap emoji
 
@@ -263,6 +264,23 @@ function monitorNoiseLevel() {
     if (noiseBarFill && noiseBarPercentage) {
       noiseBarFill.style.height = `${volume}%`;
       noiseBarPercentage.textContent = `${volume}%`;
+      
+      // Log when crossing 80% threshold and trigger confetti
+      if (volume >= 80 && !thresholdCrossed) {
+        console.log('🔊 Threshold crossed:', volume + '%');
+        thresholdCrossed = true;
+        
+        // Trigger confetti
+        if (typeof confetti !== 'undefined') {
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+        }
+      } else if (volume < 80 && thresholdCrossed) {
+        thresholdCrossed = false; // Reset when dropping below threshold
+      }
     }
     
     samples.push(volume);
@@ -278,8 +296,10 @@ function monitorNoiseLevel() {
         window.currentNoisePeak = maxNoise; // Update peak for clapping detection
         
         // Trigger clap emoji if peak exceeds threshold
-        if (maxNoise >= CLAP_THRESHOLD && window.triggerClapEmoji) {
-          window.triggerClapEmoji(maxNoise);
+        if (maxNoise >= CLAP_THRESHOLD) {
+          if (window.triggerClapEmoji) {
+            window.triggerClapEmoji(maxNoise);
+          }
         }
       }
       samples = [];
@@ -345,10 +365,14 @@ async function continuouslyDetectLandmarks(video) {
     }
     
     // Display all detected gestures
+    const gestureTextElement = document.getElementById('gesture-text');
     if (detectedGestures.length > 0) {
-      document.getElementById('gesture-text').textContent = detectedGestures.join(' ');
+      gestureTextElement.textContent = detectedGestures.join(' ');
     } else {
-      document.getElementById('gesture-text').textContent = '';
+      // Don't clear if clap emoji is showing
+      if (!gestureTextElement.textContent.includes('👏')) {
+        gestureTextElement.textContent = '';
+      }
     }
 
     requestAnimationFrame(runDetection);

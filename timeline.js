@@ -64,7 +64,21 @@ window.triggerClapEmoji = function(peakLevel) {
     currentData[currentIndex] = Math.min(currentData[currentIndex] + intensity, 10);
   }
   
-  console.log(`👏 Clap detected! Peak: ${peakLevel}%, Intensity: ${intensity}`);
+  // Display clap emoji in gesture text
+  const gestureText = document.getElementById('gesture-text');
+  if (gestureText) {
+    const clapEmojis = '👏 '.repeat(Math.min(intensity, 5)); // Show 1-5 clap emojis
+    gestureText.textContent = clapEmojis.trim();
+    
+    // Clear after 3 seconds
+    setTimeout(() => {
+      if (gestureText.textContent.includes('👏')) {
+        gestureText.textContent = '';
+      }
+    }, 3000);
+  }
+  
+  console.log(`👏 Clap! Peak: ${peakLevel}%`);
 };
 
 // Dynamically update emoji map based on gesture events
