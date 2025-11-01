@@ -11,7 +11,8 @@ window.currentNoisePeak = 0; // Expose peak for clapping detection
 let thresholdCrossed = false; // Track if we've already logged crossing the threshold
 
 const CLAP_THRESHOLD = 80; // Peak noise level to trigger clap emoji
-const CAMERA_URL = 'https://c4dd81ac85be.ngrok-free.app/img'; // Network camera feed URL
+const CAMERA_BASE_URL = 'https://192.168.20.166:8443/img'; // Network camera feed base URL
+const AUDIO_SCORE_URL = 'https://192.168.20.166:8443/audio/score'; // Audio analysis score endpoint
 
 const gestureStrings = {
   thumbs_up: '👍',
@@ -456,8 +457,9 @@ async function main() {
 
 // Camera feed polling function
 const cameraFeeds = new Map();
+const cameraCanvases = new Map();
 
-function startCameraFeedPolling(cameraNumber, url = CAMERA_URL) {
+function startCameraFeedPolling(cameraNumber, url = `${CAMERA_BASE_URL}/${cameraNumber - 1}`) {
   if (cameraFeeds.has(cameraNumber)) {
     return; // Already polling this camera
   }
@@ -486,6 +488,13 @@ function startCameraFeedPolling(cameraNumber, url = CAMERA_URL) {
         
         imgElement.src = objectURL;
         imgElement.dataset.blobUrl = objectURL;
+        
+        // Run hand detection on the camera feed
+        imgElement.onload = async () => {
+          if (model) {
+            await detectHandsOnCameraFeed(imgElement, cameraNumber);
+          }
+        };
       }
     } catch (error) {
       // Silently fail - network errors are expected
@@ -493,6 +502,122 @@ function startCameraFeedPolling(cameraNumber, url = CAMERA_URL) {
   }, 1000);
   
   cameraFeeds.set(cameraNumber, pollInterval);
+}
+
+async function detectHandsOnCameraFeed(imgElement, cameraNumber) {
+  // Create or get canvas for this camera
+  let canvas = cameraCanvases.get(cameraNumber);
+  if (!canvas) {
+    canvas = document.createElement('canvas');
+    canvas.width = imgElement.naturalWidth || 320;
+    canvas.height = imgElement.naturalHeight || 240;
+    cameraCanvases.set(cameraNumber, canvas);
+  }
+  
+  // Draw image to canvas
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+  
+  // Detect hands
+  const hands = await model.estimateHands(canvas);
+  
+  const detectedGestures = [];
+  
+  // Draw detected hands on the image
+  if (hands.length > 0) {
+    hands.forEach(hand => {
+      if (hand.keypoints) {
+        // Draw keypoints
+        hand.keypoints.forEach(kp => {
+          ctx.beginPath();
+          ctx.arc(kp.x, kp.y, 3, 0, 2 * Math.PI);
+          ctx.fillStyle = 'red';
+          ctx.fill();
+        });
+        
+        // Draw connections
+        const connections = [
+          [0, 1], [1, 2], [2, 3], [3, 4], // Thumb
+          [0, 5], [5, 6], [6, 7], [7, 8], // Index
+          [0, 9], [9, 10], [10, 11], [11, 12], // Middle
+          [0, 13], [13, 14], [14, 15], [15, 16], // Ring
+          [0, 17], [17, 18], [18, 19], [19, 20], // Pinky
+          [5, 9], [9, 13], [13, 17] // Palm
+        ];
+        
+        ctx.strokeStyle = 'lime';
+        ctx.lineWidth = 2;
+        connections.forEach(([i, j]) => {
+          ctx.beginPath();
+          ctx.moveTo(hand.keypoints[i].x, hand.keypoints[i].y);
+          ctx.lineTo(hand.keypoints[j].x, hand.keypoints[j].y);
+          ctx.stroke();
+        });
+        
+        // Detect gesture for this hand
+        if (hand.keypoints3D && gestureEstimator) {
+          const landmarks3D = hand.keypoints3D.map(kp => [kp.x, kp.y, kp.z]);
+          const est = gestureEstimator.estimate(landmarks3D, 9);
+          
+          if (est.gestures.length > 0) {
+            let result = est.gestures.reduce((p, c) => {
+              return p.score > c.score ? p : c;
+            });
+            
+            if (result.score > 7.5) {
+              const emoji = gestureStrings[result.name];
+              if (emoji) {
+                detectedGestures.push(emoji);
+                // Don't draw emoji on camera feed to avoid false detections
+              }
+            }
+          }
+        }
+      }
+    });
+    
+    // Update image with detections
+    imgElement.src = canvas.toDataURL();
+  }
+  
+  if (detectedGestures.length > 0) {
+    console.log(`Camera ${cameraNumber}: ${hands.length} hand(s) - ${detectedGestures.join(' ')}`);
+  } else {
+    console.log(`Camera ${cameraNumber}: Detected ${hands.length} hand(s)`);
+  }
+  
+  // Update camera badge count
+  const badge = document.getElementById(`camera-count-${cameraNumber}`);
+  if (badge) {
+    badge.textContent = hands.length;
+  }
+  
+  // Update global gesture count for timeline (aggregate all cameras)
+  if (!window.cameraGestureCounts) {
+    window.cameraGestureCounts = { '👍': 0, '👎': 0, '✌🏻': 0 };
+  }
+  
+  // Reset this camera's contribution
+  window.cameraGestureCounts[`camera${cameraNumber}`] = detectedGestures;
+  
+  // Calculate total from all cameras
+  const allGestures = [];
+  for (let i = 1; i <= 4; i++) {
+    const cameraGestures = window.cameraGestureCounts[`camera${i}`] || [];
+    allGestures.push(...cameraGestures);
+  }
+  
+  // Update gesture-text to include camera detections for timeline tracking
+  const gestureText = document.getElementById('gesture-text');
+  if (gestureText && !gestureText.textContent.includes('👏')) {
+    // Don't override if main webcam or clap is showing
+    // Only update if main webcam isn't detecting anything
+    const mainWebcamCount = gestureText.textContent.split(' ').filter(e => e.trim().length > 0).length;
+    if (mainWebcamCount === 0 && allGestures.length > 0) {
+      // Show camera detections in a subtle way
+      gestureText.innerHTML = `<small style="font-size: 2rem; opacity: 0.7;">${allGestures.join(' ')}</small>`;
+    }
+  }
 }
 
 function stopCameraFeedPolling(cameraNumber) {
@@ -513,5 +638,42 @@ function stopCameraFeedPolling(cameraNumber) {
 for (let i = 1; i <= 4; i++) {
   startCameraFeedPolling(i);
 }
+
+// Poll audio score every second
+setInterval(async () => {
+  try {
+    const response = await fetch(AUDIO_SCORE_URL, {
+      cache: 'no-cache',
+      mode: 'cors'
+    });
+    
+    if (response.ok) {
+      const text = await response.text();
+      // Clean up invalid JSON - remove outer quotes and unescape inner quotes
+      let cleanJson = text.trim();
+      if (cleanJson.startsWith('"') && cleanJson.endsWith('"')) {
+        cleanJson = cleanJson.slice(1, -1).replace(/\\"/g, '"');
+      }
+      const audioScore = JSON.parse(cleanJson);
+
+      // Multiply laughter score by 4 and clamp to 1
+      audioScore.laughter_score = Math.min(audioScore.laughter_score * 4, 1);
+      
+      console.log('Laughter score:', audioScore.laughter_score.toFixed(1), audioScore.clapping_score.toFixed(1));
+      
+      // Add both scores and display with 1 decimal place
+      const combinedScore = (audioScore.clapping_score + audioScore.laughter_score).toFixed(1);
+      const speakerBadge = document.getElementById('speaker-notification');
+      if (speakerBadge) {
+        speakerBadge.textContent = combinedScore;
+      }
+      
+      // Store globally for potential timeline use
+      window.audioScores = audioScore;
+    }
+  } catch (error) {
+    console.error('Audio score error:', error);
+  }
+}, 1000);
 
 main();

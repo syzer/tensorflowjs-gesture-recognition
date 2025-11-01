@@ -132,7 +132,12 @@ CLAP_THRESHOLD = 80;  // Peak noise % to trigger clap
 
 **Camera Feed (`index.js`):**
 ```javascript
-CAMERA_URL = 'http://192.168.20.166:5000/img';  // Network camera feed URL
+CAMERA_BASE_URL = 'http://192.168.20.166:5000/img';  // Network camera feed base URL (appends /0, /1, /2, /3 for each camera)
+```
+
+**Audio Score (`index.js`):**
+```javascript
+AUDIO_SCORE_URL = 'http://192.168.20.166:5000/audio/score';  // Audio analysis score endpoint
 ```
 
 **Timeline (`timeline.js`):**

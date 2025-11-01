@@ -55,8 +55,16 @@ window.triggerClapEmoji = function(peakLevel) {
   // Calculate intensity based on peak level (1-10 scale)
   const intensity = Math.min(Math.ceil((peakLevel - 80) / 4), 10); // 80% = 1, 100% = 5, beyond = up to 10
   
-  // Add clap emoji at current second with intensity
-  gestureEvents.set(currentSeconds, { emoji: '👏', count: intensity, peakLevel: peakLevel });
+  // Determine emoji based on audio scores - use laughter if laughter_score > clapping_score AND > 0.4
+  let selectedEmoji = '👏';
+  if (window.audioScores && 
+      window.audioScores.laughter_score > 0.4 && 
+      window.audioScores.laughter_score > window.audioScores.clapping_score) {
+    selectedEmoji = '😂';
+  }
+  
+  // Add emoji at current second with intensity
+  gestureEvents.set(currentSeconds, { emoji: selectedEmoji, count: intensity, peakLevel: peakLevel });
   
   // Also increase the chart value by intensity (so chart goes up with clapping)
   if (currentData.length > 0) {
@@ -64,21 +72,21 @@ window.triggerClapEmoji = function(peakLevel) {
     currentData[currentIndex] = Math.min(currentData[currentIndex] + intensity, 10);
   }
   
-  // Display clap emoji in gesture text
+  // Display emoji in gesture text
   const gestureText = document.getElementById('gesture-text');
   if (gestureText) {
-    const clapEmojis = '👏 '.repeat(Math.min(intensity, 5)); // Show 1-5 clap emojis
-    gestureText.textContent = clapEmojis.trim();
+    const emojis = (selectedEmoji + ' ').repeat(Math.min(intensity, 5)); // Show 1-5 emojis
+    gestureText.textContent = emojis.trim();
     
     // Clear after 3 seconds
     setTimeout(() => {
-      if (gestureText.textContent.includes('👏')) {
+      if (gestureText.textContent.includes(selectedEmoji)) {
         gestureText.textContent = '';
       }
     }, 3000);
   }
   
-  console.log(`👏 Clap! Peak: ${peakLevel}%`);
+  console.log(`${selectedEmoji} ${selectedEmoji === '�' ? 'Laughter' : 'Clap'}! Peak: ${peakLevel}%`);
 };
 
 // Dynamically update emoji map based on gesture events
