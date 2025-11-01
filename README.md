@@ -1,5 +1,7 @@
 # 🎥 YouTube-Style Gesture Recognition with Timeline
 
+🚀 **Live Demo:** [thumbs-up.surge.sh](https://thumbs-up.surge.sh)
+
 ![Screenshot 2025-11-01 at 20.16.57.png](Screenshot%202025-11-01%20at%2020.16.57.png)
 
 
