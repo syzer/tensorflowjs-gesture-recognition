@@ -1,10 +1,7 @@
 # 🎥 YouTube-Style Gesture Recognition with Timeline
 
-A real-time hand gesture and audio detection application with YouTube-inspired interface, featuring interactive timeline visualization and multi-modal input tracking.
+![Screenshot 2025-11-01 at 20.16.57.png](Screenshot%202025-11-01%20at%2020.16.57.png)
 
-![gesture-recognition-tensorflowjs-1080 png](https://github.com/user-attachments/assets/93140d05-29dd-49b3-bc20-d8119df11c14)
-
-## ✨ Features
 
 ### 🖐️ Multi-Hand Gesture Detection
 - **Up to 15 simultaneous hands** tracked in real-time using MediaPipe Hands
@@ -63,13 +60,15 @@ A real-time hand gesture and audio detection application with YouTube-inspired i
 
 ```bash
 npm install
-# or
-yarn
 ```
 
 ### Running Locally
 
-Use [Live Server](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) in VS Code or any static file server:
+```bash
+npx live-server ../
+```
+
+Or use [Live Server](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) in VS Code or any static file server:
 
 ```bash
 # With Live Server extension
@@ -129,6 +128,11 @@ minTrackingConfidence: 0.5
 **Clap Detection (`index.js`):**
 ```javascript
 CLAP_THRESHOLD = 80;  // Peak noise % to trigger clap
+```
+
+**Camera Feed (`index.js`):**
+```javascript
+CAMERA_URL = 'http://192.168.20.166:5000/img';  // Network camera feed URL
 ```
 
 **Timeline (`timeline.js`):**

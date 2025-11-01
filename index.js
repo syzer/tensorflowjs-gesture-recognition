@@ -11,6 +11,7 @@ window.currentNoisePeak = 0; // Expose peak for clapping detection
 let thresholdCrossed = false; // Track if we've already logged crossing the threshold
 
 const CLAP_THRESHOLD = 80; // Peak noise level to trigger clap emoji
+const CAMERA_URL = 'http://192.168.20.166:5000/img'; // Network camera feed URL
 
 const gestureStrings = {
   thumbs_up: '👍',
@@ -440,6 +441,66 @@ async function main() {
       window.timelineControls.start();
     }
   }, 500);
+}
+
+// Camera feed polling function
+const cameraFeeds = new Map();
+
+function startCameraFeedPolling(cameraNumber, url = CAMERA_URL) {
+  if (cameraFeeds.has(cameraNumber)) {
+    return; // Already polling this camera
+  }
+  
+  const imgElement = document.getElementById(`camera-feed-${cameraNumber}`);
+  if (!imgElement) {
+    console.warn(`Camera feed element ${cameraNumber} not found`);
+    return;
+  }
+  
+  const pollInterval = setInterval(async () => {
+    try {
+      const response = await fetch(url, {
+        cache: 'no-cache',
+        mode: 'cors'
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const objectURL = URL.createObjectURL(blob);
+        
+        // Revoke previous URL to prevent memory leak
+        if (imgElement.dataset.blobUrl) {
+          URL.revokeObjectURL(imgElement.dataset.blobUrl);
+        }
+        
+        imgElement.src = objectURL;
+        imgElement.dataset.blobUrl = objectURL;
+      }
+    } catch (error) {
+      // Silently fail - network errors are expected
+    }
+  }, 1000);
+  
+  cameraFeeds.set(cameraNumber, pollInterval);
+}
+
+function stopCameraFeedPolling(cameraNumber) {
+  const interval = cameraFeeds.get(cameraNumber);
+  if (interval) {
+    clearInterval(interval);
+    cameraFeeds.delete(cameraNumber);
+    
+    const imgElement = document.getElementById(`camera-feed-${cameraNumber}`);
+    if (imgElement && imgElement.dataset.blobUrl) {
+      URL.revokeObjectURL(imgElement.dataset.blobUrl);
+      delete imgElement.dataset.blobUrl;
+    }
+  }
+}
+
+// Start polling for all 4 cameras
+for (let i = 1; i <= 4; i++) {
+  startCameraFeedPolling(i);
 }
 
 main();

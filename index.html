@@ -46,15 +46,19 @@
         .noise-bar-container {
           position: absolute;
           left: 20px;
-          top: 50%;
+          top: 40%;
           transform: translateY(-50%);
-          width: 50px;
+          width: 80px;
           height: 500px;
           background: rgba(0, 0, 0, 0.5);
-          border-radius: 25px;
+          border-radius: 40px;
           border: 2px solid rgba(255, 255, 255, 0.3);
           z-index: 10;
           overflow: hidden;
+          transition: top 1.5s ease-out;
+        }
+        .noise-bar-container.slide-up {
+          top: 30%;
         }
         .noise-bar-fill {
           position: absolute;
@@ -70,7 +74,7 @@
             #ff0000 80%, 
             #ff0000 100%);
           transition: height 0.1s ease-out;
-          border-radius: 23px;
+          border-radius: 38px;
         }
         .noise-bar-threshold {
           position: absolute;
@@ -131,6 +135,10 @@
           font-size: 20px;
           font-weight: 500;
           flex: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          min-width: 0;
         }
         .navbar-actions {
           display: flex;
@@ -340,6 +348,15 @@
           max-height: 200px;
         }
         @media (max-width: 768px) {
+          .navbar-title {
+            font-size: 16px;
+          }
+          .navbar-menu {
+            margin-right: 12px;
+          }
+          .navbar-actions {
+            gap: 8px;
+          }
           .youtube-controls {
             padding: 10px 12px;
             padding-top: 14px;
@@ -404,28 +421,28 @@
     <div class="camera-overlay" id="camera-overlay-1">
       <span class="material-icons camera-overlay-close overlay-close" data-overlay="1">close</span>
       <div class="camera-overlay-content">
-        <img src="https://via.placeholder.com/800x600/1976d2/ffffff?text=Camera+1" alt="Camera 1">
+        <img id="camera-feed-1" src="https://via.placeholder.com/800x600/1976d2/ffffff?text=Camera+1" alt="Camera 1">
       </div>
     </div>
     
     <div class="camera-overlay" id="camera-overlay-2">
       <span class="material-icons camera-overlay-close overlay-close" data-overlay="2">close</span>
       <div class="camera-overlay-content">
-        <img src="https://via.placeholder.com/800x600/388e3c/ffffff?text=Camera+2" alt="Camera 2">
+        <img id="camera-feed-2" src="https://via.placeholder.com/800x600/388e3c/ffffff?text=Camera+2" alt="Camera 2">
       </div>
     </div>
     
     <div class="camera-overlay" id="camera-overlay-3">
       <span class="material-icons camera-overlay-close overlay-close" data-overlay="3">close</span>
       <div class="camera-overlay-content">
-        <img src="https://via.placeholder.com/800x600/f57c00/ffffff?text=Camera+3" alt="Camera 3">
+        <img id="camera-feed-3" src="https://via.placeholder.com/800x600/f57c00/ffffff?text=Camera+3" alt="Camera 3">
       </div>
     </div>
     
     <div class="camera-overlay" id="camera-overlay-4">
       <span class="material-icons camera-overlay-close overlay-close" data-overlay="4">close</span>
       <div class="camera-overlay-content">
-        <img src="https://via.placeholder.com/800x600/c62828/ffffff?text=Camera+4" alt="Camera 4">
+        <img id="camera-feed-4" src="https://via.placeholder.com/800x600/c62828/ffffff?text=Camera+4" alt="Camera 4">
       </div>
     </div>
     <div class="video-container">
@@ -499,6 +516,7 @@
       const wrap = document.getElementById('wrap');
       const youtubeControls = document.querySelector('.youtube-controls');
       const gestureText = document.getElementById('gesture-text');
+      const noiseBar = document.querySelector('.noise-bar-container');
       
       // Detect when timeline becomes visible (on hover)
       const checkTimelineVisibility = () => {
@@ -507,8 +525,10 @@
         
         if (isTimelineVisible) {
           gestureText.classList.add('slide-up');
+          noiseBar.classList.add('slide-up');
         } else {
           gestureText.classList.remove('slide-up');
+          noiseBar.classList.remove('slide-up');
         }
       };
       
@@ -519,12 +539,14 @@
       
       wrap.addEventListener('mouseenter', () => {
         gestureText.classList.add('slide-up');
+        noiseBar.classList.add('slide-up');
       });
       
       wrap.addEventListener('mouseleave', () => {
         setTimeout(() => {
           if (!wrap.matches(':hover') && !youtubeControls.matches(':hover')) {
             gestureText.classList.remove('slide-up');
+            noiseBar.classList.remove('slide-up');
           }
         }, 1500);
       });
@@ -533,6 +555,7 @@
         setTimeout(() => {
           if (!wrap.matches(':hover') && !youtubeControls.matches(':hover')) {
             gestureText.classList.remove('slide-up');
+            noiseBar.classList.remove('slide-up');
           }
         }, 1500);
       });
