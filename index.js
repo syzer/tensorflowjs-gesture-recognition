@@ -11,7 +11,7 @@ window.currentNoisePeak = 0; // Expose peak for clapping detection
 let thresholdCrossed = false; // Track if we've already logged crossing the threshold
 
 const CLAP_THRESHOLD = 80; // Peak noise level to trigger clap emoji
-const CAMERA_URL = 'http://192.168.20.166:5000/img'; // Network camera feed URL
+const CAMERA_URL = 'https://c4dd81ac85be.ngrok-free.app/img'; // Network camera feed URL
 
 const gestureStrings = {
   thumbs_up: '👍',
