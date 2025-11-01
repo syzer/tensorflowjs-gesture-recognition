@@ -210,7 +210,7 @@ async function continuouslyDetectLandmarks(video) {
     runtime: 'mediapipe',
     solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915',
     modelType: 'full',
-    maxHands: 10  // Detect up to 10 hands
+    maxHands: 15  // Detect up to 15 hands
   };
   model = await handPoseDetection.createDetector(
     handPoseDetection.SupportedModels.MediaPipeHands, 
@@ -237,6 +237,19 @@ async function main() {
   drawingContext.scale(-1, 1);
 
   continuouslyDetectLandmarks(video);
+  
+  // Show timeline and start animation
+  const wrap = document.getElementById('wrap');
+  if (wrap) {
+    wrap.classList.add('show');
+  }
+  
+  // Start timeline animation after a brief delay
+  setTimeout(() => {
+    if (window.timelineControls) {
+      window.timelineControls.start();
+    }
+  }, 500);
 }
 
 main();
