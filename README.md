@@ -1,66 +1,179 @@
+# 🎥 YouTube-Style Gesture Recognition with Timeline
+
+A real-time hand gesture and audio detection application with YouTube-inspired interface, featuring interactive timeline visualization and multi-modal input tracking.
+
 ![gesture-recognition-tensorflowjs-1080 png](https://github.com/user-attachments/assets/93140d05-29dd-49b3-bc20-d8119df11c14)
 
-# Gesture Detection Using Tensorflow.js
-https://storage.googleapis.com/tfjs-models/demos/handtrack/index.html
+## ✨ Features
 
+### 🖐️ Multi-Hand Gesture Detection
+- **Up to 15 simultaneous hands** tracked in real-time using MediaPipe Hands
+- **3 gesture types recognized:**
+  - 👍 Thumbs up (green)
+  - 👎 Thumbs down (red)
+  - ✌️ Victory/Peace sign
+- **2x upscaling** for better detection of small/distant hands
+- Optimized for Mac M1 camera (720p/1080p)
 
-# Gesture Detection Using Tensorflow.js
+### 🎤 Audio Monitoring
+- **Real-time microphone noise detection** (0-100%)
+- **Visual noise bar** with gradient (green → yellow → orange → red)
+- **Clap detection** - Automatically adds 👏 emoji when noise peak exceeds 80%
+- Emoji size scales with loudness intensity
 
-This repo contains a sample project showing you how to integrate [Tensorflow.js](https://www.tensorflow.org/js) into a vanilla web project. It leverages the [handpose](https://www.npmjs.com/package/@tensorflow-models/handpose)  package to visualize hand structure and the [fingerpose](https://www.npmjs.com/package/fingerpose) package to detect gestures.
+### 📊 Interactive Timeline (YouTube-Style)
+- **5-minute scrollable timeline** with Chart.js
+- **Color-coded segments:**
+  - 🟢 Green = Thumbs up moments
+  - 🔴 Red = Thumbs down moments  
+  - 🟠 Orange = Clapping/loud noise events
+- **Dynamic emoji markers** that scale based on:
+  - Thumbs up count (more hands = bigger 👍)
+  - Clapping loudness (louder = bigger 👏)
+- **Chart value increases** when clapping is detected
+- Hover to reveal detailed timeline
 
-We also demonstrate how to add custom gestures that we define independently.
+### 🎬 Video Controls
+- YouTube-inspired control bar with:
+  - ▶️ Play/Pause toggle
+  - ⏮️ Skip backward 10s / ⏭️ Skip forward 10s
+  - 🔊 Volume control
+  - ⚙️ Settings / 📝 Captions / ⛶ Fullscreen
+  - Real-time progress bar
+  - Time display (current/total)
 
-If you want a more thorough explanation, check out:
+### 🎨 Material Design UI
+- Clean navigation bar: "Big sister is watching you"
+- Dark theme with glassmorphism effects
+- Responsive layout optimized for desktop and mobile
 
-- [the blog post](https://getstream.io/blog/tensorflow-gesture-recognition)
-- [the Youtube tutorial](https://youtu.be/pON_ftmsR40)
+## 🛠️ Technologies
 
-## Usage
+- **TensorFlow.js** v4.2.0 - Machine learning in the browser
+- **MediaPipe Hands** @0.4.1646424915 - Advanced hand tracking
+- **@tensorflow-models/hand-pose-detection** @2.0.1 - Hand pose estimation
+- **fingerpose** @0.1.0 - Gesture recognition library
+- **Chart.js** @4.4.4 - Timeline visualization
+- **Web Audio API** - Real-time microphone analysis
+- **Material Design Icons & Roboto Fonts**
 
-In order to run the project locally, you need to clone the repo and run the following command to install the dependencies:
+## 🚀 Getting Started
+
+### Installation
 
 ```bash
 npm install
 # or
-yarn 
+yarn
 ```
 
-We can then use e.g. the [Live Server](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) package from VS Code to run the server.
+### Running Locally
 
-## 🛥 What is Stream?
+Use [Live Server](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) in VS Code or any static file server:
 
-Stream allows developers to rapidly deploy scalable feeds, chat messaging and video with an industry leading 99.999% uptime SLA guarantee.
+```bash
+# With Live Server extension
+# Right-click on index.html → "Open with Live Server"
 
-Stream provides UI components and state handling that make it easy to build real-time chat and video calling for your app. Stream runs and maintains a global network of edge servers around the world, ensuring optimal latency and reliability regardless of where your users are located.
+# Or use Python
+python -m http.server 8080
 
-## 📕 Tutorials
+# Or use Node.js http-server
+npx http-server -p 8080
+```
 
-To learn more about integrating AI and chatbots into your application, we recommend checking out the full list of tutorials across all of our supported frontend SDKs and providers. Stream's Chat SDK is natively supported across:
-* [React](https://getstream.io/chat/react-chat/tutorial/)
-* [React Native](https://getstream.io/chat/react-native-chat/tutorial/)
-* [Angular](https://getstream.io/chat/angular/tutorial/)
-* [Jetpack Compose](https://getstream.io/tutorials/android-chat/)
-* [SwiftUI](https://getstream.io/tutorials/ios-chat/)
-* [Flutter](https://getstream.io/chat/flutter/tutorial/)
-* [Javascript/Bring your own](https://getstream.io/chat/docs/javascript/)
+Navigate to `http://localhost:8080`
 
+### 🔐 Permissions Required
 
-## 👩‍💻 Free for Makers 👨‍💻
+- **Camera access** - For hand gesture detection
+- **Microphone access** - For audio/clap detection
+  - ⚠️ Make sure to allow microphone in macOS System Settings → Privacy & Security → Microphone
+  - The app auto-selects your built-in microphone (not virtual devices like Teams Audio)
 
-Stream is free for most side and hobby projects. To qualify, your project/company needs to have < 5 team members and < $10k in monthly revenue. Makers get $100 in monthly credit for video for free.
-For more details, check out the [Maker Account](https://getstream.io/maker-account?utm_source=Github&utm_medium=Github_Repo_Content&utm_content=Developer&utm_campaign=Github_Swift_AI_SDK&utm_term=DevRelOss).
+## 📖 How It Works
 
-## 💼 We are hiring!
+### Hand Detection Pipeline
+1. Webcam captures video at 720p (up to 1080p)
+2. Frame is upscaled 2x to 2560x1440 on hidden canvas
+3. MediaPipe Hands detects up to 15 hands simultaneously
+4. Keypoints3D fed to fingerpose for gesture estimation
+5. Recognized gestures displayed with emoji + timeline markers
 
-We've recently closed a [\$38 million Series B funding round](https://techcrunch.com/2021/03/04/stream-raises-38m-as-its-chat-and-activity-feed-apis-power-communications-for-1b-users/) and we keep actively growing.
-Our APIs are used by more than a billion end-users, and you'll have a chance to make a huge impact on the product within a team of the strongest engineers all over the world.
-Check out our current openings and apply via [Stream's website](https://getstream.io/team/#jobs).
+### Audio Detection Pipeline
+1. Web Audio API captures microphone input
+2. AnalyserNode with FFT size 2048, no smoothing
+3. Dual analysis: time domain amplitude + frequency domain average
+4. Aggregated over 1 second (60-100 samples)
+5. Peak detection triggers clap emoji when > 80%
 
+### Timeline Integration
+- Updates every second with current hand count
+- Gesture events stored with emoji + intensity/count
+- Color-coded line segments based on active gesture
+- Clapping increases chart value proportionally to loudness
+- Emoji overlays positioned at event timestamps with dynamic scaling
 
-## License
+## 🎯 Configuration
+
+### Adjustable Constants
+
+**Hand Detection (`index.js`):**
+```javascript
+config.video = { width: 1280, height: 720, fps: 30 };
+maxHands: 15
+minDetectionConfidence: 0.5
+minTrackingConfidence: 0.5
+```
+
+**Clap Detection (`index.js`):**
+```javascript
+CLAP_THRESHOLD = 80;  // Peak noise % to trigger clap
+```
+
+**Timeline (`timeline.js`):**
+```javascript
+MAX_SECONDS = 300;  // 5 minutes maximum
+DATA_UPDATE_INTERVAL = 1;  // Update every 1 second
+```
+
+## 📁 Project Structure
 
 ```
-Copyright (c) 2014-2024 Stream.io Inc. All rights reserved.
+├── index.html          # Main UI with Material Design
+├── index.js            # Hand detection + audio monitoring logic
+├── timeline.js         # Chart.js timeline with emoji overlays
+├── package.json        # Dependencies
+└── README.md
+```
+
+## � Troubleshooting
+
+### Microphone shows 0% noise
+- Check macOS System Settings → Privacy & Security → Microphone
+- Ensure browser has microphone permission
+- App should auto-detect built-in mic (not virtual devices)
+
+### Hands not detected when far away
+- Ensure good lighting
+- Camera resolution already optimized to 720p with 2x upscaling
+- Lower `minDetectionConfidence` if needed
+
+### Timeline not updating
+- Click play button (▶️) to start timeline
+- Check browser console for errors
+
+## 📚 Resources
+
+- [TensorFlow.js Documentation](https://www.tensorflow.org/js)
+- [MediaPipe Hands Guide](https://google.github.io/mediapipe/solutions/hands.html)
+- [Chart.js Documentation](https://www.chartjs.org/)
+- [Web Audio API Guide](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
+
+## 📄 License
+
+```
+Copyright (c) 2014-2025 Stream.io Inc. All rights reserved.
 
 Licensed under the Stream License;
 you may not use this file except in compliance with the License.

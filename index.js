@@ -4,6 +4,12 @@ const config = {
 let videoWidth, videoHeight, drawingContext, canvas, gestureEstimator;
 let model;
 let detectionCanvas; // Hidden canvas for 2x scaled detection
+let audioContext, analyser, microphone;
+let noiseLevel = 0;
+window.currentNoiseLevel = 0; // Expose globally for timeline
+window.currentNoisePeak = 0; // Expose peak for clapping detection
+
+const CLAP_THRESHOLD = 80; // Peak noise level to trigger clap emoji
 
 const gestureStrings = {
   thumbs_up: '👍',
@@ -137,7 +143,153 @@ async function loadVideo() {
     config.video.fps
   );
   video.play();
+  
+  // Initialize audio context and microphone
+  await initAudio();
+  
   return video;
+}
+
+async function initAudio() {
+  try {
+    // First, list all available audio input devices
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const audioInputs = devices.filter(device => device.kind === 'audioinput');
+    
+    console.log('Available audio input devices:');
+    audioInputs.forEach((device, index) => {
+      console.log(`${index}: ${device.label} (${device.deviceId})`);
+    });
+    
+    // Find the real Mac microphone (not virtual devices)
+    let selectedDevice = audioInputs.find(device => 
+      device.label.toLowerCase().includes('macbook') || 
+      device.label.toLowerCase().includes('built-in') ||
+      device.label.toLowerCase().includes('internal')
+    );
+    
+    // If not found, use the first non-Teams device
+    if (!selectedDevice) {
+      selectedDevice = audioInputs.find(device => 
+        !device.label.toLowerCase().includes('teams') &&
+        !device.label.toLowerCase().includes('virtual')
+      );
+    }
+    
+    // Fallback to first device
+    if (!selectedDevice && audioInputs.length > 0) {
+      selectedDevice = audioInputs[0];
+    }
+    
+    console.log('Selected device:', selectedDevice ? selectedDevice.label : 'default');
+    
+    // Get microphone access with specific device
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      audio: selectedDevice ? { deviceId: { exact: selectedDevice.deviceId } } : true
+    });
+    
+    // Check if audio track is enabled
+    const audioTracks = stream.getAudioTracks();
+    console.log('Audio tracks:', audioTracks.length);
+    if (audioTracks.length > 0) {
+      const track = audioTracks[0];
+      console.log('✅ Audio track label:', track.label);
+      console.log('Audio track enabled:', track.enabled);
+      console.log('Audio track muted:', track.muted);
+      console.log('Audio track readyState:', track.readyState);
+    }
+    
+    // Create audio context
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    console.log('AudioContext created, sampleRate:', audioContext.sampleRate);
+    
+    analyser = audioContext.createAnalyser();
+    microphone = audioContext.createMediaStreamSource(stream);
+    
+    // Try with less smoothing to see raw data
+    analyser.fftSize = 2048;  // Larger for more detail
+    analyser.smoothingTimeConstant = 0;  // No smoothing - raw data
+    analyser.minDecibels = -90;
+    analyser.maxDecibels = -10;
+    
+    microphone.connect(analyser);
+    
+    // Start monitoring noise level
+    monitorNoiseLevel();
+    
+    console.log('Microphone initialized, AudioContext state:', audioContext.state);
+  } catch (err) {
+    console.error('Error accessing microphone:', err);
+  }
+}
+
+function monitorNoiseLevel() {
+  const bufferLength = analyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+  const frequencyData = new Uint8Array(bufferLength);
+  
+  let samples = [];
+  let lastLogTime = Date.now();
+  
+  function analyze() {
+    // Get both time domain and frequency data
+    analyser.getByteTimeDomainData(dataArray);
+    analyser.getByteFrequencyData(frequencyData);
+    
+    // Method 1: Time domain amplitude (more direct)
+    let min = 255;
+    let max = 0;
+    for (let i = 0; i < bufferLength; i++) {
+      if (dataArray[i] < min) min = dataArray[i];
+      if (dataArray[i] > max) max = dataArray[i];
+    }
+    const amplitude = max - min;
+    const volumeTime = Math.round((amplitude / 255) * 100);
+    
+    // Method 2: Frequency domain average
+    let sumFreq = 0;
+    for (let i = 0; i < bufferLength; i++) {
+      sumFreq += frequencyData[i];
+    }
+    const avgFreq = sumFreq / bufferLength;
+    const volumeFreq = Math.round((avgFreq / 255) * 100);
+    
+    // Use whichever gives a higher reading
+    const volume = Math.max(volumeTime, volumeFreq);
+    
+    // Update noise bar in real-time
+    const noiseBarFill = document.getElementById('noise-bar-fill');
+    const noiseBarPercentage = document.getElementById('noise-bar-percentage');
+    if (noiseBarFill && noiseBarPercentage) {
+      noiseBarFill.style.height = `${volume}%`;
+      noiseBarPercentage.textContent = `${volume}%`;
+    }
+    
+    samples.push(volume);
+    
+    // Log aggregated noise level every second
+    const now = Date.now();
+    if (now - lastLogTime >= 1000) {
+      if (samples.length > 0) {
+        const avgNoise = Math.round(samples.reduce((a, b) => a + b, 0) / samples.length);
+        const maxNoise = Math.max(...samples);
+        noiseLevel = avgNoise;
+        window.currentNoiseLevel = avgNoise; // Update global for timeline
+        window.currentNoisePeak = maxNoise; // Update peak for clapping detection
+        
+        // Trigger clap emoji if peak exceeds threshold
+        if (maxNoise >= CLAP_THRESHOLD && window.triggerClapEmoji) {
+          window.triggerClapEmoji(maxNoise);
+        }
+      }
+      samples = [];
+      lastLogTime = now;
+    }
+    
+    requestAnimationFrame(analyze);
+  }
+  
+  analyze();
 }
 async function continuouslyDetectLandmarks(video) {
   async function runDetection() {

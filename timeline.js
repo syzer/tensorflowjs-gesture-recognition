@@ -50,6 +50,23 @@ let dataTimer = null;
 // Track gesture events with emojis and their counts
 const gestureEvents = new Map(); // Map of second -> { emoji, count }
 
+// Function to add clap emoji when noise threshold is exceeded
+window.triggerClapEmoji = function(peakLevel) {
+  // Calculate intensity based on peak level (1-10 scale)
+  const intensity = Math.min(Math.ceil((peakLevel - 80) / 4), 10); // 80% = 1, 100% = 5, beyond = up to 10
+  
+  // Add clap emoji at current second with intensity
+  gestureEvents.set(currentSeconds, { emoji: '👏', count: intensity, peakLevel: peakLevel });
+  
+  // Also increase the chart value by intensity (so chart goes up with clapping)
+  if (currentData.length > 0) {
+    const currentIndex = currentData.length - 1;
+    currentData[currentIndex] = Math.min(currentData[currentIndex] + intensity, 10);
+  }
+  
+  console.log(`👏 Clap detected! Peak: ${peakLevel}%, Intensity: ${intensity}`);
+};
+
 // Dynamically update emoji map based on gesture events
 function updateEmojiMap() {
   emojiMap.clear();
@@ -83,11 +100,21 @@ function getEmojiColor(index) {
   const thumbsDownIndices = Array.from(emojiMap.entries())
     .filter(([idx, data]) => data.emoji === "👎")
     .map(([idx]) => idx);
+  const clapIndices = Array.from(emojiMap.entries())
+    .filter(([idx, data]) => data.emoji === "👏")
+    .map(([idx]) => idx);
   
   // Check if we're around thumbs down (red)
   for (const emojiIndex of thumbsDownIndices) {
     if (Math.abs(index - emojiIndex) <= emojiPointRadius) {
       return '#ff0000';
+    }
+  }
+  
+  // Check if we're around clap (yellow/orange)
+  for (const emojiIndex of clapIndices) {
+    if (Math.abs(index - emojiIndex) <= emojiPointRadius) {
+      return '#ffa500';
     }
   }
   
@@ -124,8 +151,17 @@ const emojiOverlay = {
       const emoji = eventData.emoji;
       const count = eventData.count || 1;
       
-      // Scale emoji size based on count (bigger for more thumbs up)
-      const scaleFactor = emoji === '👍' ? Math.min(1 + (count - 1) * 0.3, 2.5) : 1;
+      // Scale emoji size based on count and type
+      let scaleFactor = 1;
+      if (emoji === '👍') {
+        scaleFactor = Math.min(1 + (count - 1) * 0.3, 2.5);
+      } else if (emoji === '👏') {
+        // Claps scale based on loudness (peakLevel stored in eventData)
+        const peakLevel = eventData.peakLevel || 80;
+        const loudnessScale = Math.min((peakLevel - 80) / 20, 1); // 80% = 0, 100% = 1
+        scaleFactor = 1 + loudnessScale * 1.5; // Scale from 1x to 2.5x based on loudness
+      }
+      
       const fontPx = baseFontPx * scaleFactor;
       ctx.font = `${fontPx}px system-ui, Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji`;
       
@@ -206,6 +242,9 @@ const cfg = {
           }
           if (color1 === '#ff0000' || color2 === '#ff0000') {
             return 'rgba(255, 0, 0, 0.2)';
+          }
+          if (color1 === '#ffa500' || color2 === '#ffa500') {
+            return 'rgba(255, 165, 0, 0.2)';
           }
           return colors.fill;
         }

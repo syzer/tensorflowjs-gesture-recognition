@@ -39,6 +39,58 @@
           color: white;
           text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
         }
+        .noise-bar-container {
+          position: absolute;
+          left: 20px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 50px;
+          height: 500px;
+          background: rgba(0, 0, 0, 0.5);
+          border-radius: 25px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          z-index: 10;
+          overflow: hidden;
+        }
+        .noise-bar-fill {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          width: 100%;
+          height: 0%;
+          background: linear-gradient(to top, 
+            #00ff00 0%, 
+            #7fff00 20%, 
+            #ffff00 40%, 
+            #ff7f00 60%, 
+            #ff0000 80%, 
+            #ff0000 100%);
+          transition: height 0.1s ease-out;
+          border-radius: 23px;
+        }
+        .noise-bar-label {
+          position: absolute;
+          top: -30px;
+          left: 50%;
+          transform: translateX(-50%);
+          color: white;
+          font-size: 16px;
+          font-family: 'Roboto', sans-serif;
+          font-weight: 500;
+          white-space: nowrap;
+          text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        .noise-bar-percentage {
+          position: absolute;
+          bottom: -30px;
+          left: 50%;
+          transform: translateX(-50%);
+          color: white;
+          font-size: 18px;
+          font-family: 'Roboto', sans-serif;
+          font-weight: 700;
+          text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
         .navbar {
           position: fixed;
           top: 0;
@@ -228,6 +280,11 @@
         <canvas id="canvas"></canvas>
         <video id="webcam"></video>
         <h1 id="gesture-text"></h1>
+        <div class="noise-bar-container">
+          <div class="noise-bar-label">🎤 NOISE</div>
+          <div class="noise-bar-fill" id="noise-bar-fill"></div>
+          <div class="noise-bar-percentage" id="noise-bar-percentage">0%</div>
+        </div>
     </div>
     
     <div class="youtube-controls">
