@@ -151,35 +151,52 @@ async function continuouslyDetectLandmarks(video) {
       canvas.height
     );
 
-    // Draw hand landmarks
-    const predictions = await model.estimateHands(video);
-    if (predictions.length > 0) {
-      const result = predictions[0].landmarks;
-      drawKeypoints(result, predictions[0].annotations);
-    }
+    // Detect hands using new API
+    const hands = await model.estimateHands(video);
+    
+    const detectedGestures = [];
+    
+    // Process each detected hand
+    for (let i = 0; i < hands.length; i++) {
+      const hand = hands[i];
+      
+      // Use keypoints3D for gesture estimation (normalized coordinates)
+      // and keypoints for drawing (pixel coordinates)
+      if (hand.keypoints3D && hand.keypoints) {
+        // Draw using pixel coordinates
+        const landmarks2D = hand.keypoints.map(kp => [kp.x, kp.y]);
+        drawKeypoints(landmarks2D);
+        
+        // Use 3D normalized coordinates for gesture estimation
+        const landmarks3D = hand.keypoints3D.map(kp => [kp.x, kp.y, kp.z]);
+        
+        // Estimate gesture for this hand
+        const est = gestureEstimator.estimate(landmarks3D, 9);
+        
+        if (est.gestures.length > 0) {
+          // Find gesture with highest match score
+          let result = est.gestures.reduce((p, c) => {
+            return p.score > c.score ? p : c;
+          });
 
-    if (
-      predictions.length > 0 &&
-      Object.keys(predictions[0]).includes('landmarks')
-    ) {
-      const est = gestureEstimator.estimate(predictions[0].landmarks, 9);
-      if (est.gestures.length > 0) {
-        // Find gesture with highest match score
-        let result = est.gestures.reduce((p, c) => {
-          return p.score > c.score ? p : c;
-        });
-
-        if (result.score > 9.9) {
-          document.getElementById('gesture-text').textContent =
-            gestureStrings[result.name];
+          if (result.score > 7.5) {  // Lower threshold for better detection
+            detectedGestures.push(gestureStrings[result.name]);
+          }
         }
       }
+    }
+    
+    // Display all detected gestures
+    if (detectedGestures.length > 0) {
+      document.getElementById('gesture-text').textContent = detectedGestures.join(' ');
+    } else {
+      document.getElementById('gesture-text').textContent = '';
     }
 
     requestAnimationFrame(runDetection);
   }
 
-  // Initialize gesture detection
+  // Initialize gesture detection - only thumbs up and thumbs down
   const knownGestures = [
     fp.Gestures.VictoryGesture,
     fp.Gestures.ThumbsUpGesture,
@@ -188,7 +205,17 @@ async function continuouslyDetectLandmarks(video) {
 
   gestureEstimator = new fp.GestureEstimator(knownGestures);
 
-  model = await handpose.load();
+  // Load MediaPipe Hands model with support for multiple hands (up to 10)
+  const detectorConfig = {
+    runtime: 'mediapipe',
+    solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915',
+    modelType: 'full',
+    maxHands: 10  // Detect up to 10 hands
+  };
+  model = await handPoseDetection.createDetector(
+    handPoseDetection.SupportedModels.MediaPipeHands, 
+    detectorConfig
+  );
   runDetection();
 }
 
