@@ -154,7 +154,18 @@ async function loadVideo() {
 
 async function initAudio() {
   try {
-    // First, list all available audio input devices
+    // Check if running on HTTPS (required for microphone except localhost)
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      console.warn('⚠️ Microphone requires HTTPS. Current protocol:', window.location.protocol);
+      console.warn('Please use HTTPS or localhost for microphone access');
+      return;
+    }
+    
+    // Step 1: Request basic permission first to get device labels
+    console.log('Requesting microphone permission...');
+    let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    
+    // Step 2: Now enumerate devices with full labels
     const devices = await navigator.mediaDevices.enumerateDevices();
     const audioInputs = devices.filter(device => device.kind === 'audioinput');
     
@@ -170,7 +181,7 @@ async function initAudio() {
       device.label.toLowerCase().includes('internal')
     );
     
-    // If not found, use the first non-Teams device
+    // If not found, use the first non-Teams/non-virtual device
     if (!selectedDevice) {
       selectedDevice = audioInputs.find(device => 
         !device.label.toLowerCase().includes('teams') &&
@@ -178,17 +189,16 @@ async function initAudio() {
       );
     }
     
-    // Fallback to first device
-    if (!selectedDevice && audioInputs.length > 0) {
-      selectedDevice = audioInputs[0];
+    // If we found a better device, stop the current stream and switch
+    if (selectedDevice) {
+      console.log('Switching to:', selectedDevice.label);
+      stream.getTracks().forEach(track => track.stop());
+      stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: { deviceId: { exact: selectedDevice.deviceId } }
+      });
+    } else {
+      console.log('Using default microphone');
     }
-    
-    console.log('Selected device:', selectedDevice ? selectedDevice.label : 'default');
-    
-    // Get microphone access with specific device
-    const stream = await navigator.mediaDevices.getUserMedia({ 
-      audio: selectedDevice ? { deviceId: { exact: selectedDevice.deviceId } } : true
-    });
     
     // Check if audio track is enabled
     const audioTracks = stream.getAudioTracks();
@@ -219,9 +229,10 @@ async function initAudio() {
     // Start monitoring noise level
     monitorNoiseLevel();
     
-    console.log('Microphone initialized, AudioContext state:', audioContext.state);
+    console.log('✅ Microphone initialized, AudioContext state:', audioContext.state);
   } catch (err) {
-    console.error('Error accessing microphone:', err);
+    console.error('❌ Error accessing microphone:', err);
+    console.error('Make sure you are using HTTPS or localhost, and have granted microphone permissions');
   }
 }
 
