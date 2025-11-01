@@ -1,8 +1,9 @@
 const config = {
-  video: { width: 640, height: 480, fps: 30 },
+  video: { width: 1280, height: 720, fps: 30 },
 };
 let videoWidth, videoHeight, drawingContext, canvas, gestureEstimator;
 let model;
+let detectionCanvas; // Hidden canvas for 2x scaled detection
 
 const gestureStrings = {
   thumbs_up: '👍',
@@ -112,9 +113,10 @@ async function loadWebcam(width, height, fps) {
     audio: false,
     video: {
       facingMode: 'user',
-      width: width,
-      height: height,
-      frameRate: { max: fps },
+      width: { ideal: width, max: 1920 },
+      height: { ideal: height, max: 1080 },
+      frameRate: { ideal: fps, max: 60 },
+      aspectRatio: { ideal: 16/9 }
     },
   };
 
@@ -151,8 +153,12 @@ async function continuouslyDetectLandmarks(video) {
       canvas.height
     );
 
-    // Detect hands using new API
-    const hands = await model.estimateHands(video);
+    // Create a 2x scaled version of the video for better hand detection
+    const detectionCtx = detectionCanvas.getContext('2d');
+    detectionCtx.drawImage(video, 0, 0, videoWidth * 2, videoHeight * 2);
+
+    // Detect hands using the scaled canvas (better detection of small/distant hands)
+    const hands = await model.estimateHands(detectionCanvas);
     
     const detectedGestures = [];
     
@@ -163,11 +169,11 @@ async function continuouslyDetectLandmarks(video) {
       // Use keypoints3D for gesture estimation (normalized coordinates)
       // and keypoints for drawing (pixel coordinates)
       if (hand.keypoints3D && hand.keypoints) {
-        // Draw using pixel coordinates
-        const landmarks2D = hand.keypoints.map(kp => [kp.x, kp.y]);
+        // Scale keypoints back down to original size for drawing
+        const landmarks2D = hand.keypoints.map(kp => [kp.x / 2, kp.y / 2]);
         drawKeypoints(landmarks2D);
         
-        // Use 3D normalized coordinates for gesture estimation
+        // Use 3D normalized coordinates for gesture estimation (no scaling needed)
         const landmarks3D = hand.keypoints3D.map(kp => [kp.x, kp.y, kp.z]);
         
         // Estimate gesture for this hand
@@ -210,7 +216,10 @@ async function continuouslyDetectLandmarks(video) {
     runtime: 'mediapipe',
     solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915',
     modelType: 'full',
-    maxHands: 15  // Detect up to 15 hands
+    maxHands: 15,  // Detect up to 15 hands
+    minDetectionConfidence: 0.2,  // Lower threshold for better detection of small/distant hands
+    minTrackingConfidence: 0.2,    // Lower threshold for smoother tracking
+    // maxHands: 15,  // Detect up to 15 hands
   };
   model = await handPoseDetection.createDetector(
     handPoseDetection.SupportedModels.MediaPipeHands, 
@@ -228,6 +237,11 @@ async function main() {
   canvas = document.getElementById('canvas');
   canvas.width = videoWidth;
   canvas.height = videoHeight;
+
+  // Create hidden canvas for 2x scaled detection
+  detectionCanvas = document.createElement('canvas');
+  detectionCanvas.width = videoWidth * 2;
+  detectionCanvas.height = videoHeight * 2;
 
   drawingContext = canvas.getContext('2d');
   drawingContext.clearRect(0, 0, videoWidth, videoHeight);
